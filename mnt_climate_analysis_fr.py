@@ -5,7 +5,7 @@ Created on Tue Mar 24 18:44:14 2020
 @author: Jordi Bolibar
 
 Climate projections analysis with the ADAMONT (Verfaillie et al., 2019) 
-dataset. 
+and SAFRAN (Durand et al., 2009) datasets. 
 
 """
 
@@ -38,7 +38,8 @@ for safran_year in SAFRAN_year_raw_filepaths:
 massif_IDs = np.genfromtxt(path_massif_IDs + 'Massifs_SAFRAN_Alpes.csv', delimiter=';', skip_header=1, dtype=str) 
 
 #####   FLAGS    ########
-n_massif = 3
+#n_massif = 3 # Mont-Blanc
+n_massif = 8 # Belledonne
 massif = massif_IDs[np.where(massif_IDs[:,1] == str(n_massif)), 2][0][0]
 altitude = 2100 #m
 aspect = -1
@@ -147,6 +148,14 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     common_snow_years = np.concatenate((safran_snow_a.time, adamont_snow_a.time))
     common_snow_a = np.concatenate((safran_snow_a, adamont_snow_a))
     
+    # Create folders if needed
+    current_massif_path_mon = path_climate_members + 'monthly\\' + str(massif) + '\\'
+    current_massif_path_a = path_climate_members + 'annual\\' + str(massif) + '\\'
+    if(not os.path.exists(current_massif_path_mon)):
+        os.makedirs(current_massif_path_mon)
+    if(not os.path.exists(current_massif_path_a)):
+        os.makedirs(current_massif_path_a)
+    
     #######   Plot data  ###############
     # Monthly data
     fig1, (ax11, ax12) = plt.subplots(2,1, figsize=(14, 8))
@@ -166,7 +175,7 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     ax12.legend()
     
     # Save the current plot
-    fig1.savefig(path_climate_members + 'monthly\\' + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
+    fig1.savefig(current_massif_path_mon + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
     plt.close()
     
     # Annual data
@@ -187,7 +196,7 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     ax22.legend()
     
     # Save the current plot
-    fig2.savefig(path_climate_members + 'annual\\' + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
+    fig2.savefig(current_massif_path_a + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
     plt.close()
     
 #    import pdb; pdb.set_trace()
