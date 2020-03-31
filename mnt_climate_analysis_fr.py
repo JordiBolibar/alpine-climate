@@ -14,6 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+import dask.array as da
 import os
 
 ######   FILE PATHS    #######
@@ -57,12 +58,12 @@ def get_SAFRAN_idx(massif, altitude, aspect, climate_data):
     aspect_idx = np.where(aspect == climate_data['aspect'][0,:])[0]
     massif_aspect_idx = np.array(list(set(massif_idx).intersection(aspect_idx)))
     
-    alt_idx = find_nearest_altitude(climate_data['ZS'][0,:][massif_aspect_idx], altitude).values
+    alt_idx = find_nearest_altitude(climate_data['ZS'][0,:][massif_aspect_idx], altitude).data
     final_idx = massif_aspect_idx[alt_idx]
     
-#    print("Massif: " + str(climate_data['massif_number'][0,:][final_idx].values))
-#    print("Aspect: " + str(climate_data['aspect'][0,:][final_idx].values))
-#    print("Altitude: " + str(climate_data['ZS'][0,:][final_idx].values))
+#    print("Massif: " + str(climate_data['massif_number'][0,:][final_idx].data))
+#    print("Aspect: " + str(climate_data['aspect'][0,:][final_idx].data))
+#    print("Altitude: " + str(climate_data['ZS'][0,:][final_idx].data))
     
     return final_idx
 
@@ -70,11 +71,11 @@ def get_ADAMONT_idx(massif, altitude, climate_data):
     
 #    print("\nADAMONT: ")
     massif_idx = np.where(massif == climate_data['MASSIF_NUMBER'])[0]
-    alt_idx = find_nearest_altitude(climate_data['ZS'][massif_idx], altitude).values
+    alt_idx = find_nearest_altitude(climate_data['ZS'][massif_idx], altitude).data
     final_idx = massif_idx[alt_idx]
     
-#    print("Massif: " + str(climate_data['MASSIF_NUMBER'][final_idx].values))
-#    print("Altitude: " + str(climate_data['ZS'][final_idx].values))
+#    print("Massif: " + str(climate_data['MASSIF_NUMBER'][final_idx].data))
+#    print("Altitude: " + str(climate_data['ZS'][final_idx].data))
     
     return final_idx
 
@@ -138,15 +139,15 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     ### Combine SAFRAN and ADAMONT data to create a 2000-2100 time series
     # Monthly
     common_tmean_months = np.concatenate((safran_tmean_mon.time, adamont_tmean_mon.time))
-    common_tmean_mon = np.concatenate((safran_tmean_mon, adamont_tmean_mon))
+    common_tmean_mon = da.concatenate((safran_tmean_mon.data, adamont_tmean_mon.data))
     common_snow_months = np.concatenate((safran_snow_mon.time, adamont_snow_mon.time))
-    common_snow_mon = np.concatenate((safran_snow_mon, adamont_snow_mon))
+    common_snow_mon = da.concatenate((safran_snow_mon.data, adamont_snow_mon.data))
     
     # Annual
     common_tmean_years = np.concatenate((safran_tmean_a.time, adamont_tmean_a.time))
-    common_tmean_a = np.concatenate((safran_tmean_a, adamont_tmean_a))
+    common_tmean_a = da.concatenate((safran_tmean_a.data, adamont_tmean_a.data))
     common_snow_years = np.concatenate((safran_snow_a.time, adamont_snow_a.time))
-    common_snow_a = np.concatenate((safran_snow_a, adamont_snow_a))
+    common_snow_a = da.concatenate((safran_snow_a.data, adamont_snow_a.data))
     
     # Create folders if needed
     current_massif_path_mon = path_climate_members + 'monthly\\' + str(massif) + '\\'
@@ -155,7 +156,7 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
         os.makedirs(current_massif_path_mon)
     if(not os.path.exists(current_massif_path_a)):
         os.makedirs(current_massif_path_a)
-    
+        
     #######   Plot data  ###############
     # Monthly data
     fig1, (ax11, ax12) = plt.subplots(2,1, figsize=(14, 8))
@@ -163,13 +164,13 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     ax11.axhline(y=0, color='black', linewidth=0.7, linestyle='-')
     ax11.plot(common_tmean_months, common_tmean_mon, linewidth=1, label='Mean monthly temperature', c='darkred')
-    ax11.axvline(x=safran_tmean_mon.time[-1].values, color='grey', linewidth=2.0, linestyle='--')
+    ax11.axvline(x=safran_tmean_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax11.set_ylabel('Temperature (°C)')
     ax11.set_xlabel('Year')
     ax11.legend()
     
     ax12.plot(common_snow_months, common_snow_mon, linewidth=1, label='Mean monthly snowfall', c='steelblue')
-    ax12.axvline(x=safran_tmean_mon.time[-1].values, color='grey', linewidth=2.0, linestyle='--')
+    ax12.axvline(x=safran_snow_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax12.set_ylabel('Precipitation (mm)')
     ax12.set_xlabel('Year')
     ax12.legend()
@@ -184,13 +185,13 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     ax21.axhline(y=0, color='black', linewidth=0.7, linestyle='-')
     ax21.plot(common_tmean_years, common_tmean_a, linewidth=1, label='Mean annual temperature', c='darkred')
-    ax21.axvline(x=safran_tmean_a.time[-1].values, color='grey', linewidth=2.0, linestyle='--')
+    ax21.axvline(x=safran_tmean_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax21.set_ylabel('Temperature (°C)')
     ax21.set_xlabel('Year')
     ax21.legend()
     
     ax22.plot(common_snow_years, common_snow_a, linewidth=1, label='Mean annual snowfall', c='steelblue')
-    ax22.axvline(x=safran_tmean_a.time[-1].values, color='grey', linewidth=2.0, linestyle='--')
+    ax22.axvline(x=safran_snow_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax22.set_ylabel('Precipitation (mm)')
     ax22.set_xlabel('Year')
     ax22.legend()
