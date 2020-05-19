@@ -11,11 +11,15 @@ and SAFRAN (Durand et al., 2009) datasets.
 
 ## Dependencies: ##
 from pathlib import Path
+import matplotlib
 import matplotlib.pyplot as plt
+import proplot as plot
 import numpy as np
 import xarray as xr
 import dask.array as da
 import os
+
+matplotlib.use('Agg')
 
 ######   FILE PATHS    #######
 
@@ -93,17 +97,30 @@ safran_climate = xr.open_mfdataset(SAFRAN_year_filepaths, concat_dim="time", com
 safran_idx = get_SAFRAN_idx(n_massif, altitude, aspect, safran_climate)
 
 # Monthly 
-safran_tmean_mon = safran_climate['Tair'][:,safran_idx].resample(time="1MS").mean() -273.15
-safran_snow_mon = safran_climate['Snowf'][:,safran_idx].resample(time="1MS").sum()*3600
+#safran_tmean_mon = safran_climate['Tair'][:,safran_idx].resample(time="1MS").mean() -273.15
+#safran_snow_mon = safran_climate['Snowf'][:,safran_idx].resample(time="1MS").sum()*3600
 
 # Annual 
 safran_tmean_a = safran_climate['Tair'][:,safran_idx].resample(time="1AS").mean() -273.15
 safran_snow_a = safran_climate['Snowf'][:,safran_idx].resample(time="1AS").sum()*3600
 
+fig3, (ax31, ax32) = plt.subplots(2,1, figsize=(14, 8))
+fig3.suptitle("Overall climate evolution")
+
+ax31.axhline(y=0, color='black', linewidth=0.7, linestyle='-')
+ax31.axvline(x=safran_tmean_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
+ax31.set_ylabel('Temperature (°C)')
+ax31.set_xlabel('Year')
+
+ax32.axvline(x=safran_snow_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
+ax32.set_ylabel('Precipitation (mm)')
+ax32.set_xlabel('Year')
+
 # Iterate ADAMONT projection members
 for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     member_name = str(ADAMONT_proj_filepaths[i])[8:-37]
+    RCP = member_name[-2:]
     print("\nProcessing " + str(member_name))
     
     # Locate and determine the paths of the current members
@@ -120,8 +137,8 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     #### Retrieve temperature data
     # Monthly
-    adamont_tmean_mon = climate_daymean['Tair'][:,adamont_idx].resample(time="1MS").mean() 
-    adamont_tmean_mon = adamont_tmean_mon.sel(time = slice('2017-01-01', '2100-12-31')) -273.15
+#    adamont_tmean_mon = climate_daymean['Tair'][:,adamont_idx].resample(time="1MS").mean() 
+#    adamont_tmean_mon = adamont_tmean_mon.sel(time = slice('2017-01-01', '2100-12-31')) -273.15
     
     # Annual
     adamont_tmean_a = climate_daymean['Tair'][:,adamont_idx].resample(time="1AS").mean() 
@@ -129,8 +146,8 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     #### Retrieve snow data
     # Monthly
-    adamont_snow_mon = climate_daysum['SNOW'][:,adamont_idx].resample(time="1MS").sum()
-    adamont_snow_mon = adamont_snow_mon.sel(time = slice('2017-01-01', '2100-12-31'))
+#    adamont_snow_mon = climate_daysum['SNOW'][:,adamont_idx].resample(time="1MS").sum()
+#    adamont_snow_mon = adamont_snow_mon.sel(time = slice('2017-01-01', '2100-12-31'))
     
     # Annual
     adamont_snow_a = climate_daysum['SNOW'][:,adamont_idx].resample(time="1AS").sum()
@@ -138,10 +155,10 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     
     ### Combine SAFRAN and ADAMONT data to create a 2000-2100 time series
     # Monthly
-    common_tmean_months = np.concatenate((safran_tmean_mon.time, adamont_tmean_mon.time))
-    common_tmean_mon = da.concatenate((safran_tmean_mon.data, adamont_tmean_mon.data))
-    common_snow_months = np.concatenate((safran_snow_mon.time, adamont_snow_mon.time))
-    common_snow_mon = da.concatenate((safran_snow_mon.data, adamont_snow_mon.data))
+#    common_tmean_months = np.concatenate((safran_tmean_mon.time, adamont_tmean_mon.time))
+#    common_tmean_mon = da.concatenate((safran_tmean_mon.data, adamont_tmean_mon.data))
+#    common_snow_months = np.concatenate((safran_snow_mon.time, adamont_snow_mon.time))
+#    common_snow_mon = da.concatenate((safran_snow_mon.data, adamont_snow_mon.data))
     
     # Annual
     common_tmean_years = np.concatenate((safran_tmean_a.time, adamont_tmean_a.time))
@@ -159,25 +176,25 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
         
     #######   Plot data  ###############
     # Monthly data
-    fig1, (ax11, ax12) = plt.subplots(2,1, figsize=(14, 8))
-    fig1.suptitle(member_name + " - " + massif + " - " + str(altitude) + " m")
-    
-    ax11.axhline(y=0, color='black', linewidth=0.7, linestyle='-')
-    ax11.plot(common_tmean_months, common_tmean_mon, linewidth=1, label='Mean monthly temperature', c='darkred')
-    ax11.axvline(x=safran_tmean_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
-    ax11.set_ylabel('Temperature (°C)')
-    ax11.set_xlabel('Year')
-    ax11.legend()
-    
-    ax12.plot(common_snow_months, common_snow_mon, linewidth=1, label='Mean monthly snowfall', c='steelblue')
-    ax12.axvline(x=safran_snow_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
-    ax12.set_ylabel('Precipitation (mm)')
-    ax12.set_xlabel('Year')
-    ax12.legend()
-    
-    # Save the current plot
-    fig1.savefig(current_massif_path_mon + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
-    plt.close()
+#    fig1, (ax11, ax12) = plt.subplots(2,1, figsize=(14, 8))
+#    fig1.suptitle(member_name + " - " + massif + " - " + str(altitude) + " m")
+#    
+#    ax11.axhline(y=0, color='black', linewidth=0.7, linestyle='-')
+#    ax11.plot(common_tmean_months, common_tmean_mon, linewidth=1, label='Mean monthly temperature', c='darkred')
+#    ax11.axvline(x=safran_tmean_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
+#    ax11.set_ylabel('Temperature (°C)')
+#    ax11.set_xlabel('Year')
+#    ax11.legend()
+#    
+#    ax12.plot(common_snow_months, common_snow_mon, linewidth=1, label='Mean monthly snowfall', c='steelblue')
+#    ax12.axvline(x=safran_snow_mon.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
+#    ax12.set_ylabel('Precipitation (mm)')
+#    ax12.set_xlabel('Year')
+#    ax12.legend()
+#    
+#    # Save the current plot
+#    fig1.savefig(current_massif_path_mon + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
+#    plt.close()
     
     # Annual data
     fig2, (ax21, ax22) = plt.subplots(2,1, figsize=(14, 8))
@@ -188,19 +205,37 @@ for i in range(0, ADAMONT_proj_filepaths.size, 2):
     ax21.axvline(x=safran_tmean_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax21.set_ylabel('Temperature (°C)')
     ax21.set_xlabel('Year')
+    ax21.set_ylim(0, 10)
     ax21.legend()
     
     ax22.plot(common_snow_years, common_snow_a, linewidth=1, label='Mean annual snowfall', c='steelblue')
     ax22.axvline(x=safran_snow_a.time.data[-1], color='grey', linewidth=2.0, linestyle='--')
     ax22.set_ylabel('Precipitation (mm)')
     ax22.set_xlabel('Year')
+    ax22.set_ylim(400, 2000)
     ax22.legend()
     
     # Save the current plot
-    fig2.savefig(current_massif_path_a + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.png')   
+    fig2.savefig(current_massif_path_a + member_name + '_climate_' + str(massif) + '_' + str(altitude) + '.jpeg')   
     plt.close()
     
-#    import pdb; pdb.set_trace()
+    ## Overall plot
+    if(RCP == "26"):
+        colour = "midnightblue"
+    elif(RCP == "45"):
+        colour = "darkgoldenrod"
+    elif(RCP == "85"):
+        colour = "darkred"
+    ax31.plot(common_tmean_years, common_tmean_a, linewidth=1, label='Mean annual temperature', c=colour)
+    ax32.plot(common_snow_years, common_snow_a, linewidth=1, label='Mean annual snowfall', c=colour)
+
+#import pdb; pdb.set_trace()
+#ax31.legend()
+#ax32.legend()
+# Save the current plot
+fig3.savefig(path_climate_members + 'annual\\' + 'overall_climate_' + str(massif) + '_' + str(altitude) + '.jpeg')   
+plt.close()
+    
 
 print("\nAll climate members processed")
 
